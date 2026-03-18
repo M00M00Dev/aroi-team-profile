@@ -3,14 +3,30 @@ import { JWT } from 'google-auth-library';
 
 const SHEET_ID = '1L5ZpNgmFvO7huy8M-m74vI-0Vynba5-XHswSinzdpHk'; 
 
-// --- HYPER-AGGRESSIVE KEY FORMATTER ---
+// --- INDESTRUCTIBLE KEY FORMATTER ---
 function formatPrivateKey(key: string | undefined) {
   if (!key) return '';
-  // 1. Remove any surrounding quotes Vercel might have added
-  let formatted = key.replace(/^"|"$/g, '');
-  // 2. Replace literal \n strings with real line breaks using split/join (safer than regex)
-  formatted = formatted.split('\\n').join('\n');
-  return formatted;
+  
+  try {
+    // 1. Extract the raw base64 data between the BEGIN and END markers
+    const match = key.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s);
+    
+    if (match && match[1]) {
+      // 2. Strip out ALL spaces, literal \n, quotes, and garbage Vercel added
+      const cleanBase64 = match[1].replace(/\s+/g, '').replace(/\\n/g, '').replace(/"/g, '');
+      
+      // 3. Re-chunk the text into exact 64-character lines
+      const chunks = cleanBase64.match(/.{1,64}/g) || [];
+      
+      // 4. Rebuild the perfect PEM file
+      return `-----BEGIN PRIVATE KEY-----\n${chunks.join('\n')}\n-----END PRIVATE KEY-----\n`;
+    }
+  } catch (err) {
+    console.error("Key formatter failed, falling back to basic replace");
+  }
+
+  // Fallback just in case
+  return key.replace(/\\n/g, '\n').replace(/"/g, '');
 }
 
 const serviceAccountAuth = new JWT({
