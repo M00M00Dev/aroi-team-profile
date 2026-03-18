@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { doc } from '../../../lib/googleSheets';
 import { v2 as cloudinary } from 'cloudinary';
 
-// Cloudinary Configuration - Stable
+// ADDED: Forces Vercel to NEVER cache this API route, preventing stuck errors
+export const dynamic = 'force-dynamic';
+
+// Cloudinary Configuration - Using Environment Variables
 cloudinary.config({
-  cloud_name: 'dahqse9le', 
-  api_key: '294777697822393',
-  api_secret: 'ZDoHWCyUBj_3rswojnzL8dJ0lsk',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 /**
@@ -39,7 +42,6 @@ export async function GET() {
       super_membership: String(row.get('super_members') || ''),
       start_date: String(row.get('start_date') || ''),
       training_step: Number(row.get('training_step') || 1),
-      // FIX: Added 'as any[]' to prevent the 'never[]' TypeScript error
       training_records: [] as any[] 
     }));
 
@@ -127,7 +129,7 @@ export async function POST(req: Request) {
     }
 
     // ==========================================
-    // BRANCH 2: STAFF FEEDBACK (Stable Part 1 Logic)
+    // BRANCH 2: STAFF FEEDBACK
     // ==========================================
     if (body.rating) {
       const { staff_id, name, rating, comment, photoBase64 } = body;
@@ -166,7 +168,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, type: 'feedback_saved' });
     }
 
-    // If payload doesn't match either expected format
     return NextResponse.json({ error: 'Invalid payload format' }, { status: 400 });
 
   } catch (err: any) {
