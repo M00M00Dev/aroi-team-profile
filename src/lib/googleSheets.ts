@@ -3,13 +3,13 @@ import { JWT } from 'google-auth-library';
 
 const SHEET_ID = '1L5ZpNgmFvO7huy8M-m74vI-0Vynba5-XHswSinzdpHk'; 
 
-// --- INDESTRUCTIBLE KEY FORMATTER ---
+// --- INDESTRUCTIBLE KEY FORMATTER (TypeScript Safe) ---
 function formatPrivateKey(key: string | undefined) {
   if (!key) return '';
   
   try {
-    // 1. Extract the raw base64 data between the BEGIN and END markers
-    const match = key.match(/-----BEGIN PRIVATE KEY-----(.*?)-----END PRIVATE KEY-----/s);
+    // 1. Extract the raw base64 data using [\s\S] to avoid the ES2018 /s flag error
+    const match = key.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
     
     if (match && match[1]) {
       // 2. Strip out ALL spaces, literal \n, quotes, and garbage Vercel added
