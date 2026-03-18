@@ -3,35 +3,25 @@ import { JWT } from 'google-auth-library';
 
 const SHEET_ID = '1L5ZpNgmFvO7huy8M-m74vI-0Vynba5-XHswSinzdpHk'; 
 
-// --- INDESTRUCTIBLE KEY FORMATTER (TypeScript Safe) ---
-function formatPrivateKey(key: string | undefined) {
-  if (!key) return '';
-  
-  try {
-    // 1. Extract the raw base64 data using [\s\S] to avoid the ES2018 /s flag error
-    const match = key.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
-    
-    if (match && match[1]) {
-      // 2. Strip out ALL spaces, literal \n, quotes, and garbage Vercel added
-      const cleanBase64 = match[1].replace(/\s+/g, '').replace(/\\n/g, '').replace(/"/g, '');
-      
-      // 3. Re-chunk the text into exact 64-character lines
-      const chunks = cleanBase64.match(/.{1,64}/g) || [];
-      
-      // 4. Rebuild the perfect PEM file
-      return `-----BEGIN PRIVATE KEY-----\n${chunks.join('\n')}\n-----END PRIVATE KEY-----\n`;
-    }
-  } catch (err) {
-    console.error("Key formatter failed, falling back to basic replace");
-  }
+const rawKey = process.env.GOOGLE_PRIVATE_KEY || '';
 
-  // Fallback just in case
-  return key.replace(/\\n/g, '\n').replace(/"/g, '');
-}
+// --- DIAGNOSTIC PROBE (Safe, will not log your actual secret) ---
+console.log("==== PRIVATE KEY DIAGNOSTICS ====");
+console.log("Key Exists?:", !!rawKey);
+console.log("Length:", rawKey.length, "(Should be around 1700)");
+console.log("Starts With:", rawKey.substring(0, 35));
+console.log("Ends With:", rawKey.substring(rawKey.length - 35));
+console.log("Has literal '\\n':", rawKey.includes('\\n'));
+console.log("Has actual newlines:", rawKey.includes('\n'));
+console.log("Has double quotes:", rawKey.includes('"'));
+console.log("=================================");
+
+// Basic formatter 
+const formattedKey = rawKey.replace(/\\n/g, '\n').replace(/"/g, '');
 
 const serviceAccountAuth = new JWT({
   email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  key: formatPrivateKey(process.env.GOOGLE_PRIVATE_KEY), 
+  key: formattedKey, 
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
