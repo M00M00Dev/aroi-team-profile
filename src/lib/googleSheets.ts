@@ -3,15 +3,21 @@ import { JWT } from 'google-auth-library';
 
 const SHEET_ID = '1L5ZpNgmFvO7huy8M-m74vI-0Vynba5-XHswSinzdpHk'; 
 
-// 1. Decode the Base64 string back to utf8
-const decodedKey = Buffer.from(process.env.GOOGLE_BASE64_KEY || '', 'base64').toString('utf8');
+// 1. Parse the entire JSON file straight from Vercel
+const credsEnv = process.env.GOOGLE_SERVICE_ACCOUNT || '{}';
+let creds;
 
-// 2. Clean it up: Convert literal "\n" strings into actual, invisible line breaks
-const finalKey = decodedKey.replace(/\\n/g, '\n').replace(/"/g, '').trim();
+try {
+  creds = JSON.parse(credsEnv);
+} catch (error) {
+  console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT JSON. Is it set correctly in Vercel?");
+  creds = {};
+}
 
+// 2. Pass the email and key exactly as Google formatted them in the JSON
 const serviceAccountAuth = new JWT({
-  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  key: finalKey, 
+  email: creds.client_email,
+  key: creds.private_key, 
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
