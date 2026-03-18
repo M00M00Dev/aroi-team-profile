@@ -45,3 +45,4 @@ next-env.d.ts
 
 # google service account file (if you ever download it directly)
 service-account.json
+.env*.local
