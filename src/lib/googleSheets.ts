@@ -1,19 +1,15 @@
-import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
-import fs from 'fs';
-import path from 'path';
+import { JWT } from 'google-auth-library';
 
-// Load the JSON file directly to bypass .env formatting issues
-const keyFile = path.resolve(process.cwd(), 'service-account.json');
-const credentials = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
+// IMPORTANT: Keep your actual Google Sheet ID here!
+const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID'; 
 
-export const googleAuth = new JWT({
-  email: credentials.client_email,
-  key: credentials.private_key,
-  scopes: [
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive.file',
-  ],
+// Initialize Auth using Environment Variables instead of the JSON file
+const serviceAccountAuth = new JWT({
+  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  // The .replace is crucial for Vercel to read the line breaks in the private key correctly
+  key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'), 
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-export const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID!, googleAuth);
+export const doc = new GoogleSpreadsheet(SHEET_ID, serviceAccountAuth);
