@@ -84,8 +84,8 @@ export default function TeamDashboard() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // VERSION MARK 
-  const VERSION = "2603181215-PART2-CALENDAR"; 
+  // VERSION MARK - Updated with deployment crash protection
+  const VERSION = "2603181220-PART3-DEPLOY-FIX"; 
 
   useEffect(() => { fetchStaff(); }, []);
 
@@ -93,8 +93,18 @@ export default function TeamDashboard() {
     try {
       const res = await fetch('/api/staff');
       const data = await res.json();
-      setStaff(data);
-    } catch (err) { console.error('Fetch error'); } 
+      
+      // SAFETY CHECK: Only set staff if data is actually an array
+      if (Array.isArray(data)) {
+        setStaff(data);
+      } else {
+        console.error("API Error Response:", data);
+        setStaff([]); // Keep it as an empty array to prevent crashes
+      }
+    } catch (err) { 
+      console.error('Fetch error:', err);
+      setStaff([]); 
+    } 
     finally { setLoading(false); }
   };
 
@@ -144,8 +154,6 @@ export default function TeamDashboard() {
     }
   };
 
-  // --- NEW TRAINING LOGIC ---
-
   const openTrainingModal = (person: StaffMember) => {
     setSelectedStaff(person);
     setTrainingRecords(getFullTrainingRecords(person.training_records));
@@ -163,7 +171,6 @@ export default function TeamDashboard() {
         newStatus = 'yellow';
       } else if (record.status === 'yellow') {
         newStatus = 'green'; 
-        // Standard ISO date (YYYY-MM-DD) required by HTML date inputs
         const today = new Date();
         newDate = today.toISOString().split('T')[0]; 
       } else if (record.status === 'green') {
@@ -174,7 +181,6 @@ export default function TeamDashboard() {
     }));
   };
 
-  // Handles manual date adjustments via the calendar input
   const handleDateChange = (programName: string, dateVal: string) => {
     setTrainingRecords(prev => prev.map(record => 
       record.program_name === programName 
@@ -400,13 +406,11 @@ export default function TeamDashboard() {
                       >
                         <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${record.status === 'red' ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'bg-red-500/20'}`} />
                         <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${record.status === 'yellow' ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]' : 'bg-yellow-400/20'}`} />
-                        {/* CHANGED: Now uses true green color */}
                         <div className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${record.status === 'green' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-green-500/20'}`} />
                       </div>
                     </div>
 
                     <div className="w-28 flex justify-end">
-                      {/* CHANGED: Editable Date Calendar Input */}
                       {record.status === 'green' ? (
                         <input 
                           type="date"
