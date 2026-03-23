@@ -32,16 +32,6 @@ interface StaffMember {
   training_records?: TrainingRecord[];
 }
 
-const TRAINING_PROGRAMS = [
-  "New Team Orientation",
-  "New Team Assessment",
-  "RSA",
-  "Food Safety Handling",
-  "Food Safety Supervisor",
-  "Task List Enhancement",
-  "Photo Enhancement"
-];
-
 const normalizeDateForInput = (dateStr: string) => {
   if (!dateStr) return '';
   if (dateStr.includes('/')) {
@@ -51,8 +41,9 @@ const normalizeDateForInput = (dateStr: string) => {
   return dateStr;
 };
 
-const getFullTrainingRecords = (records?: TrainingRecord[]): TrainingRecord[] => {
-  return TRAINING_PROGRAMS.map(progName => {
+// Updated to accept the dynamic programs list as an argument
+const getFullTrainingRecords = (records: TrainingRecord[] | undefined, programsList: string[]): TrainingRecord[] => {
+  return programsList.map(progName => {
     const existing = records?.find(r => r.program_name === progName);
     return existing 
       ? { ...existing, completion_date: normalizeDateForInput(existing.completion_date) }
@@ -62,6 +53,8 @@ const getFullTrainingRecords = (records?: TrainingRecord[]): TrainingRecord[] =>
 
 export default function TeamDashboard() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [programs, setPrograms] = useState<string[]>([]); // New state for dynamic programs
+  
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -82,9 +75,12 @@ export default function TeamDashboard() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const VERSION = "2603181240-PART4-UI-POLISH"; 
+  const VERSION = "2603181240-DYNAMIC-PROGRAMS"; 
 
-  useEffect(() => { fetchStaff(); }, []);
+  useEffect(() => { 
+    fetchStaff(); 
+    fetchPrograms(); // Fetch the programs on mount
+  }, []);
 
   const fetchStaff = async () => {
     try {
@@ -99,6 +95,18 @@ export default function TeamDashboard() {
       setStaff([]); 
     } 
     finally { setLoading(false); }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const res = await fetch('/api/programs');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.programs)) {
+        setPrograms(data.programs);
+      }
+    } catch (err) {
+      console.error("Failed to fetch programs", err);
+    }
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +154,8 @@ export default function TeamDashboard() {
 
   const openTrainingModal = (person: StaffMember) => {
     setSelectedStaff(person);
-    setTrainingRecords(getFullTrainingRecords(person.training_records));
+    // Pass the dynamic programs list to the helper function
+    setTrainingRecords(getFullTrainingRecords(person.training_records, programs));
     setShowTrainingModal(true);
   };
 
@@ -223,7 +232,7 @@ export default function TeamDashboard() {
   };
 
   const TrainingProgressBar = ({ records }: { records: TrainingRecord[] | undefined }) => {
-    const fullRecords = getFullTrainingRecords(records);
+    const fullRecords = getFullTrainingRecords(records, programs); // Use dynamic programs
     const completedCount = fullRecords.filter(r => r.status === 'green').length;
     
     return (
@@ -245,7 +254,7 @@ export default function TeamDashboard() {
             })}
           </div>
           <span className="text-[8px] font-black text-white/30 ml-2 uppercase tracking-tighter">
-            Programs {completedCount}/7
+            Programs {completedCount}/{programs.length} {/* Dynamic Total */}
           </span>
         </div>
       </div>
@@ -271,7 +280,6 @@ export default function TeamDashboard() {
   const filteredStaff = staff.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    // Fixed: Added w-full and max-w-[100vw] wrapper to completely kill horizontal scrolling
     <div className="relative w-full max-w-[100vw] overflow-x-hidden min-h-screen bg-[#0B1622] text-white font-sans tracking-tight">
       <main className="p-4 md:p-10">
         <div className="max-w-xl mx-auto mb-6 flex justify-between items-end">
@@ -317,12 +325,10 @@ export default function TeamDashboard() {
                         
                         <div className="flex flex-col gap-2">
                           <div className="flex flex-wrap items-center gap-y-3 gap-x-5">
-                            {/* Underlined Phone Number */}
                             <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-white/40 font-mono hover:text-[#FFA448] transition-colors text-sm underline underline-offset-4 decoration-white/20">
                               <Phone size={12} className="opacity-40" />
                               {(person.phone || '').replace(/\D/g, '').replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3')}
                             </a>
-                            {/* Underlined Email Address */}
                             <a href={`mailto:${person.email}`} className="flex items-center gap-2 text-white/40 font-medium hover:text-[#FFA448] transition-colors text-sm truncate max-w-[150px] sm:max-w-[200px] underline underline-offset-4 decoration-white/20">
                               <Globe size={12} className="opacity-40" />
                               {person.email?.split('@')[0]}
