@@ -8,7 +8,7 @@ import {
 
 interface TrainingRecord {
   program_name: string;
-  status: 'red' | 'yellow' | 'green' | 'grey'; // Added grey
+  status: 'red' | 'yellow' | 'green' | 'grey';
   completion_date: string;
 }
 
@@ -69,7 +69,7 @@ export default function TeamDashboard() {
   const [submittingTraining, setSubmittingTraining] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const VERSION = "2603232200-NA-STATUS-UPDATE"; 
+  const VERSION = "2603232240-WIDTH-LOCK"; 
 
   useEffect(() => { 
     fetchStaff(); 
@@ -137,21 +137,18 @@ export default function TeamDashboard() {
     setShowTrainingModal(true);
   };
 
-  // Updated Cycle Logic: Red -> Yellow -> Green -> Grey (N/A) -> Red
   const cycleTrainingStatus = (programName: string) => {
     setTrainingRecords(prev => prev.map(record => {
       if (record.program_name !== programName) return record;
       let newStatus: 'red' | 'yellow' | 'green' | 'grey' = 'red';
       let newDate = '';
-      
       if (record.status === 'red') newStatus = 'yellow';
       else if (record.status === 'yellow') {
         newStatus = 'green'; 
         newDate = new Date().toISOString().split('T')[0]; 
       } 
-      else if (record.status === 'green') newStatus = 'grey'; // New transition to N/A
-      else if (record.status === 'grey') newStatus = 'red'; // Loop back to Red
-      
+      else if (record.status === 'green') newStatus = 'grey';
+      else if (record.status === 'grey') newStatus = 'red';
       return { ...record, status: newStatus, completion_date: newDate };
     }));
   };
@@ -213,7 +210,6 @@ export default function TeamDashboard() {
   const TrainingProgressBar = ({ records }: { records: TrainingRecord[] | undefined }) => {
     const fullRecords = getFullTrainingRecords(records, programs);
     const completedCount = fullRecords.filter(r => r.status === 'green').length;
-    // Count only active programs (excludes N/A) for the total count display
     const activeProgramsCount = fullRecords.filter(r => r.status !== 'grey').length;
     
     return (
@@ -221,14 +217,14 @@ export default function TeamDashboard() {
         <div className="flex items-center gap-1.5 mb-1.5">
           <div className="flex gap-1">
             {fullRecords.map((record, i) => {
-              let pillClass = 'bg-white/5'; // Red (Not started) default look
+              let pillClass = 'bg-white/5';
               if (record.status === 'red') pillClass = 'bg-red-500/20';
               if (record.status === 'yellow') pillClass = 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]';
               if (record.status === 'green') pillClass = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-              if (record.status === 'grey') pillClass = 'bg-white/10 opacity-30'; // Grey (N/A)
+              if (record.status === 'grey') pillClass = 'bg-white/10 opacity-30';
 
               return (
-                <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} title={record.program_name} />
+                <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} />
               );
             })}
           </div>
@@ -259,9 +255,10 @@ export default function TeamDashboard() {
   const filteredStaff = staff.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="relative w-full max-w-[100vw] overflow-x-hidden min-h-screen bg-[#0B1622] text-white font-sans tracking-tight">
-      <main className="p-4 md:p-10">
-        <div className="max-w-xl mx-auto mb-6 flex justify-between items-end">
+    // FIX: Width-locking classes applied here (overflow-x-hidden, w-screen, max-w-full)
+    <div className="relative w-screen max-w-full overflow-x-hidden min-h-screen bg-[#0B1622] text-white font-sans tracking-tight">
+      <main className="p-4 md:p-10 w-full max-w-xl mx-auto">
+        <div className="flex justify-between items-end mb-6">
           <div>
             <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[#FFA448]">AROI <span className="text-white">TEAM</span></h1>
             <p className="text-[10px] text-white/20 tracking-[0.3em] font-bold uppercase">Profile Dashboard</p>
@@ -269,7 +266,7 @@ export default function TeamDashboard() {
           <div className="text-[9px] font-mono text-white/10 tracking-widest uppercase font-bold border-l border-white/10 pl-4">v.{VERSION}</div>
         </div>
 
-        <div className="max-w-xl mx-auto mb-8">
+        <div className="mb-8">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#FFA448]" size={18} />
             <input type="text" placeholder="Search team member..." className="w-full bg-[#152232] border border-white/5 rounded-[24px] py-4 pl-12 pr-12 outline-none focus:ring-1 ring-[#FFA448] transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -277,7 +274,7 @@ export default function TeamDashboard() {
           </div>
         </div>
 
-        <div className="max-w-xl mx-auto space-y-4">
+        <div className="space-y-4">
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#FFA448]" /></div>
           ) : (
