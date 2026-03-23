@@ -24,6 +24,10 @@ export async function GET() {
       name: String(row.get('name') || ''),
       phone: String(row.get('phone') || ''),
       email: String(row.get('email') || ''),
+      
+      // --- NEW FIELD ADDED HERE ---
+      dob: String(row.get('dob') || ''), 
+      
       pay_type: String(row.get('pay_type') || ''),
       visa_status: String(row.get('visa_status') || ''),
       visa_exp: String(row.get('visa_exp') || ''),
@@ -72,6 +76,7 @@ export async function POST(req: Request) {
     if (body.training_records) {
       const { staff_id, training_records } = body;
       const trainingSheet = doc.sheetsByIndex[3]; 
+
       if (!trainingSheet) throw new Error("Training tab not found");
 
       const rows = await trainingSheet.getRows();
@@ -124,7 +129,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, type: 'feedback_saved' });
     }
 
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid payload format' }, { status: 400 });
 
   } catch (err: any) {
     console.error("POST ERROR:", err.message);
