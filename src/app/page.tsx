@@ -8,7 +8,7 @@ import {
 
 interface TrainingRecord {
   program_name: string;
-  status: 'red' | 'yellow' | 'green';
+  status: 'red' | 'yellow' | 'green' | 'grey'; // Added grey
   completion_date: string;
 }
 
@@ -41,7 +41,6 @@ const normalizeDateForInput = (dateStr: string) => {
   return dateStr;
 };
 
-// Updated to accept the dynamic programs list as an argument
 const getFullTrainingRecords = (records: TrainingRecord[] | undefined, programsList: string[]): TrainingRecord[] => {
   return programsList.map(progName => {
     const existing = records?.find(r => r.program_name === progName);
@@ -53,47 +52,36 @@ const getFullTrainingRecords = (records: TrainingRecord[] | undefined, programsL
 
 export default function TeamDashboard() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [programs, setPrograms] = useState<string[]>([]); // New state for dynamic programs
-  
+  const [programs, setPrograms] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
-
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submittingReview, setSubmittingReview] = useState(false);
-  
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [trainingRecords, setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [submittingTraining, setSubmittingTraining] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const VERSION = "2603181240-DYNAMIC-PROGRAMS"; 
+  const VERSION = "2603232200-NA-STATUS-UPDATE"; 
 
   useEffect(() => { 
     fetchStaff(); 
-    fetchPrograms(); // Fetch the programs on mount
+    fetchPrograms(); 
   }, []);
 
   const fetchStaff = async () => {
     try {
       const res = await fetch('/api/staff');
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setStaff(data);
-      } else {
-        setStaff([]);
-      }
-    } catch (err) { 
-      setStaff([]); 
-    } 
+      setStaff(Array.isArray(data) ? data : []);
+    } catch (err) { setStaff([]); } 
     finally { setLoading(false); }
   };
 
@@ -101,12 +89,8 @@ export default function TeamDashboard() {
     try {
       const res = await fetch('/api/programs');
       const data = await res.json();
-      if (data.success && Array.isArray(data.programs)) {
-        setPrograms(data.programs);
-      }
-    } catch (err) {
-      console.error("Failed to fetch programs", err);
-    }
+      if (data.success) setPrograms(data.programs);
+    } catch (err) { console.error(err); }
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,12 +112,11 @@ export default function TeamDashboard() {
         body: JSON.stringify({
           staff_id: selectedStaff.staff_id,
           name: selectedStaff.name,
-          rating: rating,
-          comment: comment,
+          rating,
+          comment,
           photoBase64: photoPreview 
         })
       });
-
       if (res.ok) {
         setIsSuccess(true);
         setTimeout(() => {
@@ -144,31 +127,31 @@ export default function TeamDashboard() {
           setPhotoPreview(null);
           setSubmittingReview(false);
         }, 1500);
-      } else {
-        setSubmittingReview(false);
       }
-    } catch (err) { 
-      setSubmittingReview(false); 
-    }
+    } catch (err) { setSubmittingReview(false); }
   };
 
   const openTrainingModal = (person: StaffMember) => {
     setSelectedStaff(person);
-    // Pass the dynamic programs list to the helper function
     setTrainingRecords(getFullTrainingRecords(person.training_records, programs));
     setShowTrainingModal(true);
   };
 
+  // Updated Cycle Logic: Red -> Yellow -> Green -> Grey (N/A) -> Red
   const cycleTrainingStatus = (programName: string) => {
     setTrainingRecords(prev => prev.map(record => {
       if (record.program_name !== programName) return record;
-      let newStatus: 'red' | 'yellow' | 'green' = 'red';
+      let newStatus: 'red' | 'yellow' | 'green' | 'grey' = 'red';
       let newDate = '';
+      
       if (record.status === 'red') newStatus = 'yellow';
       else if (record.status === 'yellow') {
         newStatus = 'green'; 
         newDate = new Date().toISOString().split('T')[0]; 
-      } else if (record.status === 'green') newStatus = 'red';
+      } 
+      else if (record.status === 'green') newStatus = 'grey'; // New transition to N/A
+      else if (record.status === 'grey') newStatus = 'red'; // Loop back to Red
+      
       return { ...record, status: newStatus, completion_date: newDate };
     }));
   };
@@ -196,12 +179,8 @@ export default function TeamDashboard() {
           setIsSuccess(false);
           setSubmittingTraining(false);
         }, 1500);
-      } else {
-        setSubmittingTraining(false);
       }
-    } catch (err) { 
-      setSubmittingTraining(false); 
-    }
+    } catch (err) { setSubmittingTraining(false); }
   };
 
   const copyToClipboard = (text: string) => {
@@ -232,29 +211,29 @@ export default function TeamDashboard() {
   };
 
   const TrainingProgressBar = ({ records }: { records: TrainingRecord[] | undefined }) => {
-    const fullRecords = getFullTrainingRecords(records, programs); // Use dynamic programs
+    const fullRecords = getFullTrainingRecords(records, programs);
     const completedCount = fullRecords.filter(r => r.status === 'green').length;
+    // Count only active programs (excludes N/A) for the total count display
+    const activeProgramsCount = fullRecords.filter(r => r.status !== 'grey').length;
     
     return (
       <div className="mt-4 pt-4 border-t border-white/5">
         <div className="flex items-center gap-1.5 mb-1.5">
           <div className="flex gap-1">
             {fullRecords.map((record, i) => {
-              // Map the specific status to a pill color
-              let pillClass = 'bg-white/10'; // Default: Grey (Not started / red)
-              if (record.status === 'yellow') {
-                pillClass = 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]';
-              } else if (record.status === 'green') {
-                pillClass = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-              }
+              let pillClass = 'bg-white/5'; // Red (Not started) default look
+              if (record.status === 'red') pillClass = 'bg-red-500/20';
+              if (record.status === 'yellow') pillClass = 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]';
+              if (record.status === 'green') pillClass = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
+              if (record.status === 'grey') pillClass = 'bg-white/10 opacity-30'; // Grey (N/A)
 
               return (
-                <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} />
+                <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} title={record.program_name} />
               );
             })}
           </div>
           <span className="text-[8px] font-black text-white/30 ml-2 uppercase tracking-tighter">
-            Programs {completedCount}/{programs.length} {/* Dynamic Total */}
+            {completedCount}/{activeProgramsCount} PROGS
           </span>
         </div>
       </div>
@@ -304,8 +283,6 @@ export default function TeamDashboard() {
           ) : (
             filteredStaff.map((person) => {
               const isExpanded = expandedId === person.staff_id;
-              const bankBSB = (person.bank_acc || '').replace(/\D/g, '').substring(0, 6);
-              const bankACC = (person.bank_acc || '').replace(/\D/g, '').substring(6);
               return (
                 <div key={person.staff_id} className="bg-[#152232] border border-white/5 rounded-[32px] md:rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl shadow-black/20">
                   <div className="p-5 md:p-7">
@@ -322,7 +299,6 @@ export default function TeamDashboard() {
                           </div>
                           <div className={`mt-1.5 transition-transform duration-300 ${isExpanded ? 'rotate-0 text-[#FFA448]' : '-rotate-90 text-white/20'}`}><ChevronDown size={14} strokeWidth={3} /></div>
                         </div>
-                        
                         <div className="flex flex-col gap-2">
                           <div className="flex flex-wrap items-center gap-y-3 gap-x-5">
                             <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-white/40 font-mono hover:text-[#FFA448] transition-colors text-sm underline underline-offset-4 decoration-white/20">
@@ -336,7 +312,6 @@ export default function TeamDashboard() {
                           </div>
                           {person.pay_type && (<span className="w-fit bg-white/5 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md text-white/30 border border-white/5 mt-1">{person.pay_type}</span>)}
                         </div>
-                        
                         <TrainingProgressBar records={person.training_records} />
                       </div>
                       
@@ -362,8 +337,8 @@ export default function TeamDashboard() {
                         <DetailBlock label="Expiry Date" value={formatDate(person.visa_exp)} />
                       </div>
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
-                        <DetailBlock label="BSB" value={bankBSB} />
-                        <DetailBlock label="Account" value={bankACC} />
+                        <DetailBlock label="BSB" value={(person.bank_acc || '').replace(/\D/g, '').substring(0, 6)} />
+                        <DetailBlock label="Account" value={(person.bank_acc || '').replace(/\D/g, '').substring(6)} />
                       </div>
                       <div className="grid grid-cols-2 gap-3 md:gap-4 pt-2 border-t border-white/5">
                         <DetailBlock label="Date of Birth" value={formatDate(person.dob, true)} />
@@ -405,10 +380,11 @@ export default function TeamDashboard() {
                         {record.program_name}
                       </div>
                       <div className="w-16 flex justify-center">
-                        <div onClick={() => cycleTrainingStatus(record.program_name)} className="flex gap-1 bg-[#0B1622] px-1.5 py-1 rounded-full cursor-pointer border border-white/5 transition-colors">
+                        <div onClick={() => cycleTrainingStatus(record.program_name)} className="flex gap-1 bg-[#0B1622] px-1.5 py-1 rounded-full cursor-pointer border border-white/5 transition-colors items-center">
                           <div className={`w-2 h-2 rounded-full ${record.status === 'red' ? 'bg-red-500' : 'bg-red-500/20'}`} />
                           <div className={`w-2 h-2 rounded-full ${record.status === 'yellow' ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
                           <div className={`w-2 h-2 rounded-full ${record.status === 'green' ? 'bg-green-500' : 'bg-green-500/20'}`} />
+                          <div className={`text-[7px] font-bold ml-1 leading-none ${record.status === 'grey' ? 'text-white/80' : 'text-white/10'}`}>N/A</div>
                         </div>
                       </div>
                       <div className="w-24 flex justify-end">
