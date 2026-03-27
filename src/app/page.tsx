@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+// FIXED: Included MessageSquare in the imports
 import { 
   Search, Star, Camera, X, Loader2, Globe,
-  ChevronDown, Phone, Mail, Copy, Check, Trash2, CheckCircle2, BookOpen
+  ChevronDown, Phone, Mail, Copy, Check, Trash2, 
+  CheckCircle2, BookOpen, MessageSquare, ShieldCheck
 } from 'lucide-react';
 
+// --- INTERFACES ---
 interface TrainingRecord {
   program_name: string;
   status: 'red' | 'yellow' | 'green' | 'grey';
@@ -30,8 +33,10 @@ interface StaffMember {
   start_date?: string;
   training_step?: number;
   training_records?: TrainingRecord[];
+  feedback_records?: any[]; 
 }
 
+// --- UTILS ---
 const normalizeDateForInput = (dateStr: string) => {
   if (!dateStr) return '';
   if (dateStr.includes('/')) {
@@ -80,7 +85,11 @@ export default function TeamDashboard() {
     try {
       const res = await fetch('/api/staff');
       const data = await res.json();
-      setStaff(Array.isArray(data) ? data : []);
+      // BUG FIX: Deduplicate based on staff_id to stop "Double Cards"
+      const uniqueStaff = Array.isArray(data) ? data.filter((v, i, a) => 
+        a.findIndex(t => t.staff_id === v.staff_id) === i
+      ) : [];
+      setStaff(uniqueStaff);
     } catch (err) { setStaff([]); } 
     finally { setLoading(false); }
   };
@@ -93,6 +102,7 @@ export default function TeamDashboard() {
     } catch (err) { console.error(err); }
   };
 
+  // FIXED: handlePhotoChange logic restored
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -101,6 +111,15 @@ export default function TeamDashboard() {
       reader.readAsDataURL(file);
     }
   };
+
+  const filteredStaff = useMemo(() => {
+    const query = search.toLowerCase().trim();
+    if (!query) return staff;
+    return staff.filter(s => 
+      (s.name || '').toLowerCase().includes(query) || 
+      (s.staff_id || '').toLowerCase().includes(query)
+    );
+  }, [search, staff]);
 
   const handleReviewSubmit = async () => {
     if (!rating || !selectedStaff) return alert('Please select a rating');
@@ -222,10 +241,7 @@ export default function TeamDashboard() {
               if (record.status === 'yellow') pillClass = 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]';
               if (record.status === 'green') pillClass = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
               if (record.status === 'grey') pillClass = 'bg-white/10 opacity-30';
-
-              return (
-                <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} />
-              );
+              return <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} />;
             })}
           </div>
           <span className="text-[8px] font-black text-white/30 ml-2 uppercase tracking-tighter">
@@ -252,10 +268,7 @@ export default function TeamDashboard() {
     );
   };
 
-  const filteredStaff = staff.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
-
   return (
-    // FIX: Width-locking classes applied here (overflow-x-hidden, w-screen, max-w-full)
     <div className="relative w-screen max-w-full overflow-x-hidden min-h-screen bg-[#0B1622] text-white font-sans tracking-tight">
       <main className="p-4 md:p-10 w-full max-w-xl mx-auto">
         <div className="flex justify-between items-end mb-6">
@@ -323,8 +336,31 @@ export default function TeamDashboard() {
                     </div>
                   </div>
 
-                  <div className={`transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <div className={`transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="px-5 md:px-7 pb-10 pt-4 border-t border-white/5 bg-gradient-to-b from-transparent to-white/[0.02] space-y-4">
+                      {person.feedback_records && person.feedback_records.length > 0 && (
+                        <div className="mb-6 pt-2">
+                           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FFA448] mb-4 flex items-center gap-2">
+                            <MessageSquare size={10} /> Performance Feedback
+                          </h3>
+                          <div className="space-y-3">
+                            {person.feedback_records.map((feed, fidx) => (
+                              <div key={fidx} className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                <div className="flex justify-between mb-2">
+                                  <div className="flex gap-0.5">
+                                    {[...Array(5)].map((_, i) => (
+                                      <Star key={i} size={10} className={i < feed.rating ? "fill-[#FFA448] text-[#FFA448]" : "text-white/10"} />
+                                    ))}
+                                  </div>
+                                  <span className="text-[9px] text-white/30 uppercase font-bold">{feed.date}</span>
+                                </div>
+                                <p className="text-xs text-white/70 italic leading-relaxed">"{feed.ai_refined_text || feed.comment}"</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-3 md:gap-4">
                         <DetailBlock label="Weekday Rate" value={person.rate_weekday} color="text-[#FFA448]" />
                         <DetailBlock label="Weekend Rate" value={person.rate_weekend} color="text-[#FFA448]" />
@@ -349,7 +385,7 @@ export default function TeamDashboard() {
           )}
         </div>
 
-        {/* TRAINING POPUP */}
+        {/* --- MODALS --- */}
         {showTrainingModal && selectedStaff && (
           <div className="fixed inset-0 bg-[#0B1622]/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
             <div className="bg-[#152232] border border-white/10 w-full max-w-md rounded-[32px] md:rounded-[48px] p-6 md:p-8 relative shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
@@ -357,51 +393,37 @@ export default function TeamDashboard() {
                 <div className="absolute inset-0 bg-[#FFA448] z-[60] flex flex-col items-center justify-center text-[#152232] animate-in zoom-in duration-300">
                   <CheckCircle2 size={64} strokeWidth={3} className="mb-4 animate-bounce" />
                   <h3 className="text-2xl font-black uppercase tracking-tighter italic">Records Updated</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Synced to Cloud</p>
                 </div>
               )}
-              <button className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors" onClick={() => setShowTrainingModal(false)}><X size={24} /></button>
-              <h2 className="text-2xl md:text-3xl font-black italic uppercase text-center mb-6 tracking-tighter">{selectedStaff.name?.split(' ')[0]} <span className="text-white/20">Training</span></h2>
-              
-              <div className="space-y-1 mb-8">
-                <div className="flex text-[8px] font-black uppercase tracking-[0.2em] text-white/30 px-2 pb-2 border-b border-white/5">
-                  <div className="flex-1">Program</div>
-                  <div className="w-16 text-center">Status</div>
-                  <div className="w-24 text-right">Completion</div>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  {trainingRecords.map((record, idx) => (
-                    <div key={idx} className="flex items-center bg-white/5 border border-white/5 rounded-2xl p-3 h-auto min-h-[56px]">
-                      <div className="flex-1 text-[11px] md:text-sm font-medium tracking-tight pr-2 text-white/90 break-words">
-                        {record.program_name}
-                      </div>
-                      <div className="w-16 flex justify-center">
-                        <div onClick={() => cycleTrainingStatus(record.program_name)} className="flex gap-1 bg-[#0B1622] px-1.5 py-1 rounded-full cursor-pointer border border-white/5 transition-colors items-center">
-                          <div className={`w-2 h-2 rounded-full ${record.status === 'red' ? 'bg-red-500' : 'bg-red-500/20'}`} />
-                          <div className={`w-2 h-2 rounded-full ${record.status === 'yellow' ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
-                          <div className={`w-2 h-2 rounded-full ${record.status === 'green' ? 'bg-green-500' : 'bg-green-500/20'}`} />
-                          <div className={`text-[7px] font-bold ml-1 leading-none ${record.status === 'grey' ? 'text-white/80' : 'text-white/10'}`}>N/A</div>
-                        </div>
-                      </div>
-                      <div className="w-24 flex justify-end">
-                        {record.status === 'green' ? (
-                          <input type="date" value={record.completion_date || ''} onChange={(e) => handleDateChange(record.program_name, e.target.value)} className="bg-[#0B1622] text-white/80 text-[10px] p-1 rounded-md border border-white/10 outline-none w-full text-right" />
-                        ) : ( <span className="text-[10px] font-mono text-white/40 mr-1">—</span> )}
+              <button className="absolute top-6 right-6 text-white/20 hover:text-white" onClick={() => setShowTrainingModal(false)}><X size={24} /></button>
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase text-center mb-6 tracking-tighter">{selectedStaff.name?.split(' ')[0]} Training</h2>
+              <div className="space-y-2">
+                {trainingRecords.map((record, idx) => (
+                  <div key={idx} className="flex items-center bg-white/5 border border-white/5 rounded-2xl p-3 h-auto min-h-[56px]">
+                    <div className="flex-1 text-[11px] md:text-sm font-medium tracking-tight pr-2 text-white/90 break-words">{record.program_name}</div>
+                    <div className="w-16 flex justify-center">
+                      <div onClick={() => cycleTrainingStatus(record.program_name)} className="flex gap-1 bg-[#0B1622] px-1.5 py-1 rounded-full cursor-pointer border border-white/5 transition-colors items-center">
+                        <div className={`w-2 h-2 rounded-full ${record.status === 'red' ? 'bg-red-500' : 'bg-red-500/20'}`} />
+                        <div className={`w-2 h-2 rounded-full ${record.status === 'yellow' ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
+                        <div className={`w-2 h-2 rounded-full ${record.status === 'green' ? 'bg-green-500' : 'bg-green-500/20'}`} />
+                        <div className={`text-[7px] font-bold ml-1 leading-none ${record.status === 'grey' ? 'text-white/80' : 'text-white/10'}`}>N/A</div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="w-24 flex justify-end">
+                      {record.status === 'green' ? (
+                        <input type="date" value={record.completion_date || ''} onChange={(e) => handleDateChange(record.program_name, e.target.value)} className="bg-[#0B1622] text-white/80 text-[10px] p-1 rounded-md border border-white/10 outline-none w-full text-right" />
+                      ) : ( <span className="text-[10px] font-mono text-white/40 mr-1">—</span> )}
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              <button disabled={submittingTraining || isSuccess} onClick={handleTrainingSubmit} className="w-full bg-white/10 text-white font-black py-4 rounded-[24px] uppercase tracking-widest text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 border border-white/5">
+              <button disabled={submittingTraining || isSuccess} onClick={handleTrainingSubmit} className="mt-8 w-full bg-white/10 text-white font-black py-4 rounded-[24px] uppercase tracking-widest text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 border border-white/5">
                 {submittingTraining ? <><Loader2 className="animate-spin text-[#FFA448]" size={18} /> Syncing...</> : 'Save Updates'}
               </button>
             </div>
           </div>
         )}
 
-        {/* FEEDBACK POPUP */}
         {showReviewModal && selectedStaff && (
           <div className="fixed inset-0 bg-[#0B1622]/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
             <div className="bg-[#152232] border border-white/10 w-full max-w-md rounded-[32px] md:rounded-[48px] p-6 md:p-8 relative shadow-2xl">
@@ -409,12 +431,10 @@ export default function TeamDashboard() {
                 <div className="absolute inset-0 bg-[#FFA448] z-[60] flex flex-col items-center justify-center text-[#152232] animate-in zoom-in duration-300">
                   <CheckCircle2 size={64} strokeWidth={3} className="mb-4 animate-bounce" />
                   <h3 className="text-2xl font-black uppercase tracking-tighter italic">Transfer Complete</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Synced to Cloud</p>
                 </div>
               )}
-              <button className="absolute top-6 right-6 text-white/20 hover:text-white transition-colors" onClick={() => setShowReviewModal(false)}><X size={24} /></button>
-              <h2 className="text-2xl md:text-3xl font-black italic uppercase text-center mb-8 tracking-tighter">{selectedStaff.name?.split(' ')[0]} <span className="text-white/20">Review</span></h2>
-              
+              <button className="absolute top-6 right-6 text-white/20 hover:text-white" onClick={() => setShowReviewModal(false)}><X size={24} /></button>
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase text-center mb-8 tracking-tighter">{selectedStaff.name?.split(' ')[0]} Review</h2>
               <div className="space-y-4">
                 <textarea className="w-full bg-white/5 border border-white/5 rounded-[24px] p-5 min-h-[140px] outline-none focus:ring-1 ring-[#FFA448] text-sm text-white/80 placeholder:text-white/10" placeholder="Manager comments..." value={comment} onChange={(e) => setComment(e.target.value)} />
                 <div className="flex items-center gap-3 bg-white/5 p-2 rounded-[24px] border border-white/5">
