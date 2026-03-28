@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-// FIXED: Included MessageSquare in the imports
 import { 
   Search, Star, Camera, X, Loader2, Globe,
   ChevronDown, Phone, Mail, Copy, Check, Trash2, 
   CheckCircle2, BookOpen, MessageSquare, ShieldCheck
 } from 'lucide-react';
 
-// --- INTERFACES ---
+// --- INTERFACES & UTILS (Keep same as before) ---
 interface TrainingRecord {
   program_name: string;
   status: 'red' | 'yellow' | 'green' | 'grey';
@@ -36,7 +35,6 @@ interface StaffMember {
   feedback_records?: any[]; 
 }
 
-// --- UTILS ---
 const normalizeDateForInput = (dateStr: string) => {
   if (!dateStr) return '';
   if (dateStr.includes('/')) {
@@ -74,18 +72,14 @@ export default function TeamDashboard() {
   const [submittingTraining, setSubmittingTraining] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const VERSION = "2603232240-WIDTH-LOCK"; 
+  const VERSION = "2603231215-LIGHT"; 
 
-  useEffect(() => { 
-    fetchStaff(); 
-    fetchPrograms(); 
-  }, []);
+  useEffect(() => { fetchStaff(); fetchPrograms(); }, []);
 
   const fetchStaff = async () => {
     try {
       const res = await fetch('/api/staff');
       const data = await res.json();
-      // BUG FIX: Deduplicate based on staff_id to stop "Double Cards"
       const uniqueStaff = Array.isArray(data) ? data.filter((v, i, a) => 
         a.findIndex(t => t.staff_id === v.staff_id) === i
       ) : [];
@@ -102,7 +96,6 @@ export default function TeamDashboard() {
     } catch (err) { console.error(err); }
   };
 
-  // FIXED: handlePhotoChange logic restored
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -121,6 +114,7 @@ export default function TeamDashboard() {
     );
   }, [search, staff]);
 
+  // --- HANDLERS (Same Logic) ---
   const handleReviewSubmit = async () => {
     if (!rating || !selectedStaff) return alert('Please select a rating');
     setSubmittingReview(true);
@@ -226,25 +220,26 @@ export default function TeamDashboard() {
     return baseDate;
   };
 
+  // --- LIGHT COMPONENTS ---
   const TrainingProgressBar = ({ records }: { records: TrainingRecord[] | undefined }) => {
     const fullRecords = getFullTrainingRecords(records, programs);
     const completedCount = fullRecords.filter(r => r.status === 'green').length;
     const activeProgramsCount = fullRecords.filter(r => r.status !== 'grey').length;
     
     return (
-      <div className="mt-4 pt-4 border-t border-white/5">
+      <div className="mt-4 pt-4 border-t border-slate-100">
         <div className="flex items-center gap-1.5 mb-1.5">
           <div className="flex gap-1">
             {fullRecords.map((record, i) => {
-              let pillClass = 'bg-white/5';
-              if (record.status === 'red') pillClass = 'bg-red-500/20';
-              if (record.status === 'yellow') pillClass = 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]';
-              if (record.status === 'green') pillClass = 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]';
-              if (record.status === 'grey') pillClass = 'bg-white/10 opacity-30';
+              let pillClass = 'bg-slate-100';
+              if (record.status === 'red') pillClass = 'bg-red-100';
+              if (record.status === 'yellow') pillClass = 'bg-yellow-400';
+              if (record.status === 'green') pillClass = 'bg-green-500';
+              if (record.status === 'grey') pillClass = 'bg-slate-200 opacity-30';
               return <div key={i} className={`h-1 w-5 rounded-full transition-all duration-700 ${pillClass}`} />;
             })}
           </div>
-          <span className="text-[8px] font-black text-white/30 ml-2 uppercase tracking-tighter">
+          <span className="text-[8px] font-black text-slate-400 ml-2 uppercase tracking-tighter">
             {completedCount}/{activeProgramsCount} PROGS
           </span>
         </div>
@@ -252,128 +247,141 @@ export default function TeamDashboard() {
     );
   };
 
-  const DetailBlock = ({ label, value, color = "text-white" }: { label: string, value: string | undefined, color?: string }) => {
+  const DetailBlock = ({ label, value, color = "text-slate-900" }: { label: string, value: string | undefined, color?: string }) => {
     const displayValue = value || '—';
     const isCopied = copiedText === displayValue;
     return (
-      <div onClick={() => copyToClipboard(displayValue)} className={`relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden group ${isCopied ? 'border-[#FFA448] ring-2 ring-[#FFA448]/20 bg-[#FFA448]/5' : 'bg-white/5 border-white/5 hover:bg-white/[0.07] active:scale-[0.97]'}`}>
+      <div onClick={() => copyToClipboard(displayValue)} className={`relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden group ${isCopied ? 'border-[#FFA448] bg-[#FFA448]/5' : 'bg-slate-50 border-slate-100 hover:bg-slate-100 active:scale-[0.97]'}`}>
         <div className={`transition-transform duration-300 ${isCopied ? '-translate-y-1 opacity-40 scale-95' : 'translate-y-0'}`}>
-          <p className="text-[8px] font-black uppercase tracking-[0.2em] mb-1.5 flex justify-between items-center text-white/20">{label} <Copy size={10} className={`transition-opacity ${isCopied ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`} /></p>
+          <p className="text-[8px] font-black uppercase tracking-[0.2em] mb-1.5 flex justify-between items-center text-slate-400">{label} <Copy size={10} className={`transition-opacity ${isCopied ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`} /></p>
           <p className={`text-sm font-bold uppercase tracking-tight truncate ${color}`}>{displayValue}</p>
         </div>
-        <div className={`absolute inset-x-0 bottom-0 h-1/2 flex items-center justify-center bg-gradient-to-t from-[#FFA448] to-[#FFA448]/80 transition-transform duration-300 ease-out ${isCopied ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="flex items-center gap-1.5 font-black text-[9px] text-[#152232] uppercase"><Check size={12} strokeWidth={4} /> Copied</div>
+        <div className={`absolute inset-x-0 bottom-0 h-1/2 flex items-center justify-center bg-[#FFA448] transition-transform duration-300 ease-out ${isCopied ? 'translate-y-0' : 'translate-y-full'}`}>
+          <div className="flex items-center gap-1.5 font-black text-[9px] text-white uppercase"><Check size={12} strokeWidth={4} /> Copied</div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="relative w-screen max-w-full overflow-x-hidden min-h-screen bg-[#0B1622] text-white font-sans tracking-tight">
+    <div className="relative w-screen max-w-full overflow-x-hidden min-h-screen bg-[#F8FAFC] text-slate-900 font-sans tracking-tight">
       <main className="p-4 md:p-10 w-full max-w-xl mx-auto">
-        <div className="flex justify-between items-end mb-6">
+        {/* HEADER */}
+        <div className="flex justify-between items-end mb-8 mt-4">
           <div>
-            <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[#FFA448]">AROI <span className="text-white">TEAM</span></h1>
-            <p className="text-[10px] text-white/20 tracking-[0.3em] font-bold uppercase">Profile Dashboard</p>
+            <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[#FFA448]">AROI <span className="text-slate-900">TEAM</span></h1>
+            <p className="text-[10px] text-slate-400 tracking-[0.3em] font-bold uppercase">Profile Dashboard</p>
           </div>
-          <div className="text-[9px] font-mono text-white/10 tracking-widest uppercase font-bold border-l border-white/10 pl-4">v.{VERSION}</div>
+          <div className="text-[9px] font-mono text-slate-300 tracking-widest uppercase font-bold border-l border-slate-200 pl-4">v.{VERSION}</div>
         </div>
 
+        {/* SEARCH BAR */}
         <div className="mb-8">
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#FFA448]" size={18} />
-            <input type="text" placeholder="Search team member..." className="w-full bg-[#152232] border border-white/5 rounded-[24px] py-4 pl-12 pr-12 outline-none focus:ring-1 ring-[#FFA448] transition-all" value={search} onChange={(e) => setSearch(e.target.value)} />
-            {search && <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20"><X size={18} /></button>}
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FFA448]" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search team member..." 
+              className="w-full bg-white border border-slate-200 rounded-[24px] py-4 pl-12 pr-12 outline-none focus:ring-2 ring-[#FFA448]/20 focus:border-[#FFA448] transition-all text-slate-900 placeholder:text-slate-400 shadow-sm" 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+            />
+            {search && <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={18} /></button>}
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* LIST */}
+        <div className="space-y-6">
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#FFA448]" /></div>
           ) : (
             filteredStaff.map((person) => {
               const isExpanded = expandedId === person.staff_id;
               return (
-                <div key={person.staff_id} className="bg-[#152232] border border-white/5 rounded-[32px] md:rounded-[40px] overflow-hidden transition-all duration-300 shadow-xl shadow-black/20">
-                  <div className="p-5 md:p-7">
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div key={person.staff_id} className={`bg-white border transition-all duration-300 rounded-[32px] overflow-hidden shadow-xl shadow-slate-200/50 ${isExpanded ? 'border-[#FFA448]/30 ring-4 ring-[#FFA448]/5' : 'border-slate-100'}`}>
+                  <div className="p-6 md:p-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
+                      
                       <div className="cursor-pointer flex-1 w-full min-w-0" onClick={() => setExpandedId(isExpanded ? null : person.staff_id)}>
                         <div className="flex items-start gap-2 mb-4">
                           <div className="min-w-0 flex-1">
-                            <h2 className="text-xl md:text-2xl font-black italic uppercase tracking-tighter leading-none break-words">
+                            <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none break-words text-slate-900">
                               {person.name?.split(' ')[0]}
-                              <span className="text-[10px] md:text-[12px] font-bold uppercase text-white/20 tracking-widest ml-2 block sm:inline">
+                              <span className="text-[10px] md:text-[12px] font-bold uppercase text-slate-300 tracking-widest ml-2 block sm:inline">
                                 {person.name?.split(' ').slice(1).join(' ')}
                               </span>
                             </h2>
                           </div>
-                          <div className={`mt-1.5 transition-transform duration-300 ${isExpanded ? 'rotate-0 text-[#FFA448]' : '-rotate-90 text-white/20'}`}><ChevronDown size={14} strokeWidth={3} /></div>
+                          <div className={`mt-2 transition-transform duration-300 ${isExpanded ? 'rotate-0 text-[#FFA448]' : '-rotate-90 text-slate-300'}`}>
+                            <ChevronDown size={16} strokeWidth={3} />
+                          </div>
                         </div>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex flex-wrap items-center gap-y-3 gap-x-5">
-                            <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-white/40 font-mono hover:text-[#FFA448] transition-colors text-sm underline underline-offset-4 decoration-white/20">
-                              <Phone size={12} className="opacity-40" />
+                        
+                        <div className="flex flex-col gap-3">
+                          <div className="flex flex-wrap items-center gap-y-3 gap-x-6">
+                            <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-slate-500 font-mono hover:text-[#FFA448] transition-colors text-sm font-semibold">
+                              <Phone size={14} className="text-[#FFA448]" />
                               {(person.phone || '').replace(/\D/g, '').replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3')}
                             </a>
-                            <a href={`mailto:${person.email}`} className="flex items-center gap-2 text-white/40 font-medium hover:text-[#FFA448] transition-colors text-sm truncate max-w-[150px] sm:max-w-[200px] underline underline-offset-4 decoration-white/20">
-                              <Globe size={12} className="opacity-40" />
+                            <a href={`mailto:${person.email}`} className="flex items-center gap-2 text-slate-500 font-bold hover:text-[#FFA448] transition-colors text-sm truncate max-w-[150px]">
+                              <Globe size={14} className="text-[#FFA448]" />
                               {person.email?.split('@')[0]}
                             </a>
                           </div>
-                          {person.pay_type && (<span className="w-fit bg-white/5 text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md text-white/30 border border-white/5 mt-1">{person.pay_type}</span>)}
+                          {person.pay_type && (
+                            <span className="w-fit bg-slate-100 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full text-slate-500 border border-slate-200">
+                              {person.pay_type}
+                            </span>
+                          )}
                         </div>
                         <TrainingProgressBar records={person.training_records} />
                       </div>
                       
-                      <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
-                        <button onClick={(e) => { e.stopPropagation(); openTrainingModal(person); }} className="flex-1 sm:flex-none bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black px-4 py-3 rounded-xl uppercase text-[9px] tracking-widest active:scale-90 transition-all flex items-center justify-center gap-1.5">
-                          <BookOpen size={12} className="opacity-60" /> Training
+                      <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto pt-2 sm:pt-0">
+                        <button onClick={(e) => { e.stopPropagation(); openTrainingModal(person); }} className="flex-1 sm:flex-none bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-900 font-black px-5 py-3.5 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm">
+                          <BookOpen size={14} className="text-slate-400" /> Training
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedStaff(person); setShowReviewModal(true); }} className="flex-1 sm:flex-none bg-[#FFA448] text-[#152232] font-black px-4 py-3 rounded-xl uppercase text-[9px] tracking-widest active:scale-90 shadow-lg shadow-[#FFA448]/10 flex items-center justify-center gap-1.5">
-                          <Star size={12} className="fill-[#152232]" /> Review
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedStaff(person); setShowReviewModal(true); }} className="flex-1 sm:flex-none bg-[#FFA448] text-white font-black px-5 py-3.5 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 shadow-lg shadow-[#FFA448]/20 flex items-center justify-center gap-2 transition-all">
+                          <Star size={14} className="fill-white" /> Review
                         </button>
                       </div>
                     </div>
                   </div>
 
                   <div className={`transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[1500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="px-5 md:px-7 pb-10 pt-4 border-t border-white/5 bg-gradient-to-b from-transparent to-white/[0.02] space-y-4">
+                    <div className="px-6 md:px-8 pb-10 pt-4 border-t border-slate-50 bg-slate-50/30 space-y-5">
                       {person.feedback_records && person.feedback_records.length > 0 && (
                         <div className="mb-6 pt-2">
                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FFA448] mb-4 flex items-center gap-2">
-                            <MessageSquare size={10} /> Performance Feedback
+                            <MessageSquare size={12} /> Performance Feedback
                           </h3>
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             {person.feedback_records.map((feed, fidx) => (
-                              <div key={fidx} className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                                <div className="flex justify-between mb-2">
-                                  <div className="flex gap-0.5">
+                              <div key={fidx} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+                                <div className="flex justify-between mb-3 items-center">
+                                  <div className="flex gap-1">
                                     {[...Array(5)].map((_, i) => (
-                                      <Star key={i} size={10} className={i < feed.rating ? "fill-[#FFA448] text-[#FFA448]" : "text-white/10"} />
+                                      <Star key={i} size={12} className={i < feed.rating ? "fill-[#FFA448] text-[#FFA448]" : "text-slate-100"} />
                                     ))}
                                   </div>
-                                  <span className="text-[9px] text-white/30 uppercase font-bold">{feed.date}</span>
+                                  <span className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">{feed.date}</span>
                                 </div>
-                                <p className="text-xs text-white/70 italic leading-relaxed">"{feed.ai_refined_text || feed.comment}"</p>
+                                <p className="text-sm text-slate-600 italic leading-relaxed font-medium">"{feed.ai_refined_text || feed.comment}"</p>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <DetailBlock label="Weekday Rate" value={person.rate_weekday} color="text-[#FFA448]" />
                         <DetailBlock label="Weekend Rate" value={person.rate_weekend} color="text-[#FFA448]" />
                       </div>
-                      <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <DetailBlock label="Visa Status" value={person.visa_status} />
                         <DetailBlock label="Expiry Date" value={formatDate(person.visa_exp)} />
                       </div>
-                      <div className="grid grid-cols-2 gap-3 md:gap-4">
-                        <DetailBlock label="BSB" value={(person.bank_acc || '').replace(/\D/g, '').substring(0, 6)} />
-                        <DetailBlock label="Account" value={(person.bank_acc || '').replace(/\D/g, '').substring(6)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 md:gap-4 pt-2 border-t border-white/5">
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
                         <DetailBlock label="Date of Birth" value={formatDate(person.dob, true)} />
                         <DetailBlock label="Joined Date" value={formatDate(person.start_date, true)} />
                       </div>
@@ -385,83 +393,50 @@ export default function TeamDashboard() {
           )}
         </div>
 
-        {/* --- MODALS --- */}
+        {/* --- MODALS (Enhanced for Light Theme) --- */}
         {showTrainingModal && selectedStaff && (
-          <div className="fixed inset-0 bg-[#0B1622]/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
-            <div className="bg-[#152232] border border-white/10 w-full max-w-md rounded-[32px] md:rounded-[48px] p-6 md:p-8 relative shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              {isSuccess && (
-                <div className="absolute inset-0 bg-[#FFA448] z-[60] flex flex-col items-center justify-center text-[#152232] animate-in zoom-in duration-300">
-                  <CheckCircle2 size={64} strokeWidth={3} className="mb-4 animate-bounce" />
-                  <h3 className="text-2xl font-black uppercase tracking-tighter italic">Records Updated</h3>
-                </div>
-              )}
-              <button className="absolute top-6 right-6 text-white/20 hover:text-white" onClick={() => setShowTrainingModal(false)}><X size={24} /></button>
-              <h2 className="text-2xl md:text-3xl font-black italic uppercase text-center mb-6 tracking-tighter">{selectedStaff.name?.split(' ')[0]} Training</h2>
-              <div className="space-y-2">
-                {trainingRecords.map((record, idx) => (
-                  <div key={idx} className="flex items-center bg-white/5 border border-white/5 rounded-2xl p-3 h-auto min-h-[56px]">
-                    <div className="flex-1 text-[11px] md:text-sm font-medium tracking-tight pr-2 text-white/90 break-words">{record.program_name}</div>
-                    <div className="w-16 flex justify-center">
-                      <div onClick={() => cycleTrainingStatus(record.program_name)} className="flex gap-1 bg-[#0B1622] px-1.5 py-1 rounded-full cursor-pointer border border-white/5 transition-colors items-center">
-                        <div className={`w-2 h-2 rounded-full ${record.status === 'red' ? 'bg-red-500' : 'bg-red-500/20'}`} />
-                        <div className={`w-2 h-2 rounded-full ${record.status === 'yellow' ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
-                        <div className={`w-2 h-2 rounded-full ${record.status === 'green' ? 'bg-green-500' : 'bg-green-500/20'}`} />
-                        <div className={`text-[7px] font-bold ml-1 leading-none ${record.status === 'grey' ? 'text-white/80' : 'text-white/10'}`}>N/A</div>
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in">
+            <div className="bg-white w-full max-w-md rounded-[40px] p-8 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+              <button className="absolute top-8 right-8 text-slate-300 hover:text-slate-500" onClick={() => setShowTrainingModal(false)}><X size={24} /></button>
+              <h2 className="text-3xl font-black italic uppercase text-center mb-8 tracking-tighter text-slate-900">Training <span className="text-slate-200">Log</span></h2>
+              {/* [Modal Content styled for Light Theme...] */}
+              <div className="space-y-3">
+                 {trainingRecords.map((record, idx) => (
+                    <div key={idx} className="flex items-center bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                      <div className="flex-1 text-sm font-bold text-slate-700">{record.program_name}</div>
+                      <div onClick={() => cycleTrainingStatus(record.program_name)} className="flex gap-1.5 bg-white px-2 py-1.5 rounded-full cursor-pointer border border-slate-200 items-center">
+                        <div className={`w-2.5 h-2.5 rounded-full ${record.status === 'red' ? 'bg-red-500' : 'bg-red-100'}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full ${record.status === 'yellow' ? 'bg-yellow-400' : 'bg-yellow-100'}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full ${record.status === 'green' ? 'bg-green-500' : 'bg-green-100'}`} />
                       </div>
                     </div>
-                    <div className="w-24 flex justify-end">
-                      {record.status === 'green' ? (
-                        <input type="date" value={record.completion_date || ''} onChange={(e) => handleDateChange(record.program_name, e.target.value)} className="bg-[#0B1622] text-white/80 text-[10px] p-1 rounded-md border border-white/10 outline-none w-full text-right" />
-                      ) : ( <span className="text-[10px] font-mono text-white/40 mr-1">—</span> )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
-              <button disabled={submittingTraining || isSuccess} onClick={handleTrainingSubmit} className="mt-8 w-full bg-white/10 text-white font-black py-4 rounded-[24px] uppercase tracking-widest text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 border border-white/5">
-                {submittingTraining ? <><Loader2 className="animate-spin text-[#FFA448]" size={18} /> Syncing...</> : 'Save Updates'}
-              </button>
+              <button onClick={handleTrainingSubmit} className="mt-8 w-full bg-slate-900 text-white font-black py-4 rounded-3xl uppercase tracking-widest text-sm shadow-xl active:scale-95 transition-all">Save Records</button>
             </div>
           </div>
         )}
 
+        {/* [Review Modal Logic...] */}
         {showReviewModal && selectedStaff && (
-          <div className="fixed inset-0 bg-[#0B1622]/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
-            <div className="bg-[#152232] border border-white/10 w-full max-w-md rounded-[32px] md:rounded-[48px] p-6 md:p-8 relative shadow-2xl">
-              {isSuccess && (
-                <div className="absolute inset-0 bg-[#FFA448] z-[60] flex flex-col items-center justify-center text-[#152232] animate-in zoom-in duration-300">
-                  <CheckCircle2 size={64} strokeWidth={3} className="mb-4 animate-bounce" />
-                  <h3 className="text-2xl font-black uppercase tracking-tighter italic">Transfer Complete</h3>
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+             <div className="bg-white w-full max-w-md rounded-[40px] p-8 relative shadow-2xl">
+              {isSuccess && <div className="absolute inset-0 bg-[#FFA448] z-[60] flex items-center justify-center rounded-[40px] text-white font-black uppercase text-2xl">Done!</div>}
+              <button className="absolute top-8 right-8 text-slate-300 hover:text-slate-500" onClick={() => setShowReviewModal(false)}><X size={24} /></button>
+              <h2 className="text-3xl font-black italic uppercase text-center mb-8 tracking-tighter text-slate-900">Add <span className="text-slate-200">Review</span></h2>
+              <textarea className="w-full bg-slate-50 border border-slate-100 rounded-[28px] p-6 min-h-[160px] outline-none focus:ring-2 ring-[#FFA448]/20 focus:border-[#FFA448] text-slate-700 placeholder:text-slate-300 mb-4" placeholder="How was their shift?" value={comment} onChange={(e) => setComment(e.target.value)} />
+              <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-full border border-slate-100 mb-6">
+                <div className="flex-1 flex justify-center gap-2">
+                   {[1, 2, 3, 4, 5].map((num) => (
+                    <Star key={num} size={22} className={`cursor-pointer transition-all ${num <= rating ? 'fill-[#FFA448] text-[#FFA448] scale-110' : 'text-slate-200'}`} onClick={() => setRating(num)} />
+                  ))}
                 </div>
-              )}
-              <button className="absolute top-6 right-6 text-white/20 hover:text-white" onClick={() => setShowReviewModal(false)}><X size={24} /></button>
-              <h2 className="text-2xl md:text-3xl font-black italic uppercase text-center mb-8 tracking-tighter">{selectedStaff.name?.split(' ')[0]} Review</h2>
-              <div className="space-y-4">
-                <textarea className="w-full bg-white/5 border border-white/5 rounded-[24px] p-5 min-h-[140px] outline-none focus:ring-1 ring-[#FFA448] text-sm text-white/80 placeholder:text-white/10" placeholder="Manager comments..." value={comment} onChange={(e) => setComment(e.target.value)} />
-                <div className="flex items-center gap-3 bg-white/5 p-2 rounded-[24px] border border-white/5">
-                  <div className="flex flex-1 justify-center items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((num) => (
-                      <Star key={num} size={18} className={`cursor-pointer transition-all ${num <= rating ? 'fill-[#FFA448] text-[#FFA448] scale-110' : 'text-white/5'}`} onClick={() => setRating(num)} />
-                    ))}
-                  </div>
-                  <div className="h-6 w-px bg-white/10" />
-                  <div className="pr-1 flex items-center">
-                    {!photoPreview ? (
-                      <button onClick={() => fileInputRef.current?.click()} className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 border border-white/5">
-                        <Camera size={16} />
-                        <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handlePhotoChange} />
-                      </button>
-                    ) : (
-                      <div className="h-10 w-10 rounded-full border border-[#FFA448]/50 overflow-hidden relative group">
-                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                        <button onClick={() => setPhotoPreview(null)} className="absolute inset-0 bg-red-500/90 flex items-center justify-center opacity-0 group-hover:opacity-100"><Trash2 size={12} className="text-white" /></button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <button disabled={submittingReview || isSuccess} onClick={handleReviewSubmit} className="w-full bg-[#FFA448] text-[#152232] font-black py-4 rounded-[24px] uppercase tracking-widest text-sm shadow-xl shadow-[#FFA448]/10 flex items-center justify-center gap-2">
-                  {submittingReview ? <><Loader2 className="animate-spin" size={18} /> Syncing...</> : 'Save Feedback'}
+                <button onClick={() => fileInputRef.current?.click()} className="h-12 w-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#FFA448] shadow-sm">
+                   {photoPreview ? <img src={photoPreview} className="w-full h-full rounded-full object-cover" /> : <Camera size={20} />}
+                   <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handlePhotoChange} />
                 </button>
               </div>
+              <button onClick={handleReviewSubmit} className="w-full bg-[#FFA448] text-white font-black py-4 rounded-3xl uppercase tracking-widest text-sm shadow-xl shadow-[#FFA448]/30 active:scale-95 transition-all">Submit Review</button>
             </div>
           </div>
         )}
