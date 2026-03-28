@@ -4,10 +4,10 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Search, Star, Camera, X, Loader2, Globe,
   ChevronDown, Phone, Mail, Copy, Check, Trash2, 
-  CheckCircle2, BookOpen, MessageSquare, ShieldCheck
+  CheckCircle2, BookOpen, MessageSquare, ShieldCheck, Calendar, Image as ImageIcon
 } from 'lucide-react';
 
-// --- INTERFACES & UTILS (Keep same as light theme) ---
+// --- INTERFACES ---
 interface TrainingRecord {
   program_name: string;
   status: 'red' | 'yellow' | 'green' | 'grey';
@@ -35,6 +35,7 @@ interface StaffMember {
   feedback_records?: any[]; 
 }
 
+// --- UTILS ---
 const normalizeDateForInput = (dateStr: string) => {
   if (!dateStr) return '';
   if (dateStr.includes('/')) {
@@ -65,6 +66,7 @@ export default function TeamDashboard() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [reviewDate, setReviewDate] = useState(new Date().toISOString().split('T')[0]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
@@ -72,9 +74,12 @@ export default function TeamDashboard() {
   const [submittingTraining, setSubmittingTraining] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const VERSION = "2603231225-BLUE-TFN"; 
+  const VERSION = "2603231330-LIGHT-BLUE-DATE"; 
 
-  useEffect(() => { fetchStaff(); fetchPrograms(); }, []);
+  useEffect(() => { 
+    fetchStaff(); 
+    fetchPrograms(); 
+  }, []);
 
   const fetchStaff = async () => {
     try {
@@ -114,7 +119,6 @@ export default function TeamDashboard() {
     );
   }, [search, staff]);
 
-  // --- HANDLERS (Same Logic) ---
   const handleReviewSubmit = async () => {
     if (!rating || !selectedStaff) return alert('Please select a rating');
     setSubmittingReview(true);
@@ -127,6 +131,7 @@ export default function TeamDashboard() {
           name: selectedStaff.name,
           rating,
           comment,
+          date: reviewDate,
           photoBase64: photoPreview 
         })
       });
@@ -137,6 +142,7 @@ export default function TeamDashboard() {
           setIsSuccess(false);
           setRating(0);
           setComment('');
+          setReviewDate(new Date().toISOString().split('T')[0]);
           setPhotoPreview(null);
           setSubmittingReview(false);
         }, 1500);
@@ -220,7 +226,8 @@ export default function TeamDashboard() {
     return baseDate;
   };
 
-  // --- LIGHT COMPONENTS ---
+  // --- UI COMPONENTS ---
+
   const TrainingProgressBar = ({ records }: { records: TrainingRecord[] | undefined }) => {
     const fullRecords = getFullTrainingRecords(records, programs);
     const completedCount = fullRecords.filter(r => r.status === 'green').length;
@@ -257,30 +264,25 @@ export default function TeamDashboard() {
           <p className={`text-sm font-bold uppercase tracking-tight truncate ${color}`}>{displayValue}</p>
         </div>
         <div className={`absolute inset-x-0 bottom-0 h-1/2 flex items-center justify-center bg-[#FFA448] transition-transform duration-300 ease-out ${isCopied ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="flex items-center gap-1.5 font-black text-[9px] text-white uppercase"><Check size={12} strokeWidth={4} /> Copied</div>
+          <div className="flex items-center gap-1.5 font-black text-[9px] text-white uppercase font-sans tracking-widest"><Check size={12} strokeWidth={4} /> Copied</div>
         </div>
       </div>
     );
   };
 
-  // --- NEW: BLUE DETAIL BLOCK (Specifically for TFN) ---
   const BlueDetailBlock = ({ label, value }: { label: string, value: string | undefined }) => {
     const displayValue = value || '—';
     const isCopied = copiedText === displayValue;
-    const blueColor = '#3B82F6'; // Royal Blue
-
     return (
       <div onClick={() => copyToClipboard(displayValue)} className={`relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden group ${isCopied ? 'border-orange-500 bg-orange-500/10' : 'bg-blue-600 border-blue-700 hover:bg-blue-700 active:scale-[0.97] shadow-lg shadow-blue-500/20'}`}>
         <div className={`transition-transform duration-300 ${isCopied ? '-translate-y-1 opacity-40 scale-95' : 'translate-y-0'}`}>
           <p className="text-[8px] font-black uppercase tracking-[0.2em] mb-1.5 flex justify-between items-center text-white/50">{label} <Copy size={10} className={`text-white/50 transition-opacity ${isCopied ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'}`} /></p>
-          {/* FONT FIX: Use Mono font and mask TFN by only showing last 4 digits */}
-          <p className="text-sm font-mono tracking-[0.2em] text-white break-all">
+          <p className="text-sm font-mono tracking-[0.2em] text-white break-all font-bold">
              {displayValue === '—' ? '—' : `***${displayValue.replace(/\D/g, '').substring(5)}`}
           </p>
         </div>
-        {/* The 'Copied' state also uses orange for consistency with primary actions */}
         <div className={`absolute inset-x-0 bottom-0 h-1/2 flex items-center justify-center bg-[#FFA448] transition-transform duration-300 ease-out ${isCopied ? 'translate-y-0' : 'translate-y-full'}`}>
-          <div className="flex items-center gap-1.5 font-black text-[9px] text-white uppercase"><Check size={12} strokeWidth={4} /> Copied</div>
+          <div className="flex items-center gap-1.5 font-black text-[9px] text-white uppercase tracking-widest"><Check size={12} strokeWidth={4} /> Copied</div>
         </div>
       </div>
     );
@@ -293,7 +295,7 @@ export default function TeamDashboard() {
         <div className="flex justify-between items-end mb-8 mt-4 border-b border-slate-100 pb-4">
           <div>
             <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[#FFA448]">AROI <span className="text-slate-900">TEAM</span></h1>
-            <p className="text-[10px] text-slate-400 tracking-[0.3em] font-bold uppercase">Profile Dashboard</p>
+            <p className="text-[10px] text-slate-400 tracking-[0.3em] font-bold uppercase font-sans">Profile Dashboard</p>
           </div>
           <div className="text-[9px] font-mono text-slate-300 tracking-widest uppercase font-bold border-l border-slate-200 pl-4">v.{VERSION}</div>
         </div>
@@ -330,7 +332,7 @@ export default function TeamDashboard() {
                           <div className="min-w-0 flex-1">
                             <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none break-words text-slate-900">
                               {person.name?.split(' ')[0]}
-                              <span className="text-[10px] md:text-[12px] font-bold uppercase text-slate-300 tracking-widest ml-2 block sm:inline">
+                              <span className="text-[10px] md:text-[12px] font-bold uppercase text-slate-300 tracking-widest ml-2 block sm:inline font-sans">
                                 {person.name?.split(' ').slice(1).join(' ')}
                               </span>
                             </h2>
@@ -340,7 +342,7 @@ export default function TeamDashboard() {
                           </div>
                         </div>
                         
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-3 font-sans">
                           <div className="flex flex-wrap items-center gap-y-3 gap-x-6">
                             <a href={`tel:${person.phone}`} className="flex items-center gap-2 text-slate-500 font-mono hover:text-[#FFA448] transition-colors text-sm font-semibold">
                               <Phone size={14} className="text-[#FFA448]" />
@@ -361,18 +363,18 @@ export default function TeamDashboard() {
                       </div>
                       
                       <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto pt-2 sm:pt-0">
-                        <button onClick={(e) => { e.stopPropagation(); openTrainingModal(person); }} className="flex-1 sm:flex-none bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-900 font-black px-5 py-3.5 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm">
+                        <button onClick={(e) => { e.stopPropagation(); openTrainingModal(person); }} className="flex-1 sm:flex-none bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-900 font-black px-5 py-3.5 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm font-sans">
                           <BookOpen size={14} className="text-slate-400" /> Training
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedStaff(person); setShowReviewModal(true); }} className="flex-1 sm:flex-none bg-[#FFA448] text-white font-black px-5 py-3.5 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 shadow-lg shadow-[#FFA448]/20 flex items-center justify-center gap-2 transition-all">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedStaff(person); setShowReviewModal(true); }} className="flex-1 sm:flex-none bg-[#FFA448] text-white font-black px-5 py-3.5 rounded-2xl uppercase text-[10px] tracking-widest active:scale-95 shadow-lg shadow-[#FFA448]/20 flex items-center justify-center gap-2 transition-all font-sans">
                           <Star size={14} className="fill-white" /> Review
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  <div className={`transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[1800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="px-6 md:px-8 pb-10 pt-4 border-t border-slate-50 bg-slate-50/30 space-y-5">
+                  <div className={`transition-all duration-500 overflow-hidden ${isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="px-6 md:px-8 pb-10 pt-4 border-t border-slate-50 bg-slate-50/30 space-y-5 font-sans">
                       {person.feedback_records && person.feedback_records.length > 0 && (
                         <div className="mb-6 pt-2">
                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FFA448] mb-4 flex items-center gap-2">
@@ -401,7 +403,6 @@ export default function TeamDashboard() {
                         <DetailBlock label="Weekend Rate" value={person.rate_weekend} color="text-[#FFA448]" />
                       </div>
                       
-                      {/* --- TFN BLUE BLOCK (TFN_BLUE_CODE) --- */}
                       <div className="space-y-4 pt-2 border-t border-slate-100">
                          <BlueDetailBlock label="TFN Number (Encrypted)" value={person.tfn_number} />
                       </div>
@@ -427,7 +428,7 @@ export default function TeamDashboard() {
           )}
         </div>
 
-        {/* --- BOTTOM ACTION BAR (MOCKED for v.BLUE_TFN) --- */}
+        {/* --- BOTTOM ACTION BAR --- */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 z-50">
           <div className="bg-white/90 backdrop-blur-xl border border-slate-100 p-2.5 rounded-3xl shadow-2xl flex justify-between items-center shadow-slate-300/40">
             <button className="flex-1 py-3 text-[#FFA448] flex justify-center active:scale-95 transition-transform"><Search size={22} /></button>
@@ -436,11 +437,11 @@ export default function TeamDashboard() {
           </div>
         </div>
 
-        {/* --- MODALS (Enhanced for Light Theme) --- */}
+        {/* --- MODALS --- */}
         {showTrainingModal && selectedStaff && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6 animate-in fade-in">
-            <div className="bg-white w-full max-w-md rounded-[40px] p-8 relative shadow-2xl max-h-[90vh] overflow-y-auto">
-              {isSuccess && <div className="absolute inset-0 bg-[#FFA448] z-[60] flex items-center justify-center rounded-[40px] text-white font-black uppercase text-2xl">Records Synced!</div>}
+            <div className="bg-white w-full max-w-md rounded-[40px] p-8 relative shadow-2xl max-h-[90vh] overflow-y-auto font-sans">
+              {isSuccess && <div className="absolute inset-0 bg-[#FFA448] z-[60] flex items-center justify-center rounded-[40px] text-white font-black uppercase text-2xl animate-in zoom-in">Records Synced!</div>}
               <button className="absolute top-8 right-8 text-slate-300 hover:text-slate-500" onClick={() => setShowTrainingModal(false)}><X size={24} /></button>
               <h2 className="text-3xl font-black italic uppercase text-center mb-8 tracking-tighter text-slate-900">{selectedStaff.name?.split(' ')[0]} <span className="text-slate-200">Log</span></h2>
               
@@ -456,32 +457,49 @@ export default function TeamDashboard() {
                     </div>
                   ))}
               </div>
-              <button onClick={handleTrainingSubmit} className="mt-10 w-full bg-slate-900 text-white font-black py-4.5 rounded-3xl uppercase tracking-widest text-sm shadow-xl active:scale-95 transition-all">Save Records to Cloud</button>
+              <button onClick={handleTrainingSubmit} className="mt-10 w-full bg-slate-900 text-white font-black py-4.5 rounded-3xl uppercase tracking-widest text-sm shadow-xl active:scale-95 transition-all">Save Records</button>
             </div>
           </div>
         )}
 
         {showReviewModal && selectedStaff && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-             <div className="bg-white w-full max-w-md rounded-[40px] p-8 relative shadow-2xl">
-              {isSuccess && <div className="absolute inset-0 bg-[#FFA448] z-[60] flex items-center justify-center rounded-[40px] text-white font-black uppercase text-2xl">Feedback Complete</div>}
+             <div className="bg-white w-full max-w-md rounded-[40px] p-8 relative shadow-2xl font-sans">
+              {isSuccess && <div className="absolute inset-0 bg-[#FFA448] z-[60] flex items-center justify-center rounded-[40px] text-white font-black uppercase text-2xl animate-in zoom-in">Feedback Sent</div>}
               <button className="absolute top-8 right-8 text-slate-300 hover:text-slate-500" onClick={() => setShowReviewModal(false)}><X size={24} /></button>
-              <h2 className="text-3xl font-black italic uppercase text-center mb-8 tracking-tighter text-slate-900">Add <span className="text-slate-200">Shift Note</span></h2>
-              <textarea className="w-full bg-slate-50 border border-slate-100 rounded-[28px] p-6 min-h-[160px] outline-none focus:ring-2 ring-[#FFA448]/20 focus:border-[#FFA448] text-slate-700 placeholder:text-slate-300 mb-4" placeholder="Manager comments on performance..." value={comment} onChange={(e) => setComment(e.target.value)} />
-              <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-full border border-slate-100 mb-6">
-                <div className="flex-1 flex justify-center gap-2">
-                   {[1, 2, 3, 4, 5].map((num) => (
-                    <Star key={num} size={22} className={`cursor-pointer transition-all ${num <= rating ? 'fill-[#FFA448] text-[#FFA448] scale-110' : 'text-slate-200'}`} onClick={() => setRating(num)} />
-                  ))}
+              <h2 className="text-3xl font-black italic uppercase text-center mb-6 tracking-tighter text-slate-900">{selectedStaff.name?.split(' ')[0]} <span className="text-slate-200">Review</span></h2>
+
+              {/* DATE PICKER */}
+              <div className="mb-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-4 mb-2 block">Shift Date</label>
+                <div className="relative group">
+                  <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 text-[#FFA448]" size={16} />
+                  <input 
+                    type="date" 
+                    value={reviewDate}
+                    onChange={(e) => setReviewDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 pl-12 pr-6 outline-none focus:ring-2 ring-[#FFA448]/10 focus:border-[#FFA448] text-sm font-bold text-slate-700 shadow-sm transition-all appearance-none"
+                  />
                 </div>
-                <button onClick={() => fileInputRef.current?.click()} className="h-12 w-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#FFA448] shadow-sm active:scale-90 transition-transform">
-                   {photoPreview ? <img src={photoPreview} className="w-full h-full rounded-full object-cover" /> : <Camera size={20} />}
-                   <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handlePhotoChange} />
+              </div>
+
+              <div className="space-y-4">
+                <textarea className="w-full bg-slate-50 border border-slate-100 rounded-[28px] p-6 min-h-[140px] outline-none focus:ring-2 ring-[#FFA448]/20 focus:border-[#FFA448] text-slate-700 placeholder:text-slate-300 text-sm leading-relaxed" placeholder="Manager comments..." value={comment} onChange={(e) => setComment(e.target.value)} />
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-full border border-slate-100 mb-6">
+                  <div className="flex-1 flex justify-center gap-2">
+                     {[1, 2, 3, 4, 5].map((num) => (
+                      <Star key={num} size={22} className={`cursor-pointer transition-all ${num <= rating ? 'fill-[#FFA448] text-[#FFA448] scale-110' : 'text-slate-200'}`} onClick={() => setRating(num)} />
+                    ))}
+                  </div>
+                  <button onClick={() => fileInputRef.current?.click()} className="h-12 w-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#FFA448] shadow-sm active:scale-90 transition-transform">
+                     {photoPreview ? <img src={photoPreview} className="w-full h-full rounded-full object-cover" /> : <Camera size={20} />}
+                     <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={handlePhotoChange} />
+                  </button>
+                </div>
+                <button disabled={submittingReview} onClick={handleReviewSubmit} className="w-full bg-[#FFA448] text-white font-black py-4.5 rounded-3xl uppercase tracking-widest text-sm shadow-xl shadow-[#FFA448]/30 active:scale-95 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
+                  {submittingReview ? <><Loader2 className="animate-spin text-white" size={18} /> Syncing...</> : 'Send Shift Feedback'}
                 </button>
               </div>
-              <button disabled={submittingReview} onClick={handleReviewSubmit} className="w-full bg-[#FFA448] text-white font-black py-4.5 rounded-3xl uppercase tracking-widest text-sm shadow-xl shadow-[#FFA448]/30 active:scale-95 transition-all disabled:opacity-70 flex justify-center items-center gap-2">
-                {submittingReview ? <><Loader2 className="animate-spin text-white" size={18} /> Transferring...</> : 'Send Shift Feedback'}
-              </button>
             </div>
           </div>
         )}
